@@ -1,0 +1,16 @@
+name: Push and Deploy Serverless function
+on: push
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: goodsmileduck/yandex-serverless-action@v2
+        with:
+          token: ${{ secrets.YANDEX_ACCOUNT_TOKEN }}
+          function_id: ${{ secrets.YANDEX_CLOUD_FUNCTION_ID }}
+          service_account: ${{ secrets.YANDEX_CLOUD_SERVICE_ACCOUNT_ID }}
+          runtime: 'golang121'
+          memory: '128'
+          entrypoint: 'main.Handler'
