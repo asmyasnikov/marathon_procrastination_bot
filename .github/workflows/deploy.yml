@@ -8,9 +8,13 @@ jobs:
       - uses: actions/checkout@master
       - uses: goodsmileduck/yandex-serverless-action@v2
         with:
+          description: ${{ github.event.head_commit.message }}
           token: ${{ secrets.YANDEX_ACCOUNT_TOKEN }}
           function_id: ${{ secrets.YANDEX_CLOUD_FUNCTION_ID }}
           service_account: ${{ secrets.YANDEX_CLOUD_SERVICE_ACCOUNT_ID }}
           runtime: 'golang121'
           memory: '128'
+          execution_timeout: '1s'
+          source: .
           entrypoint: 'main.Handler'
+          environment: TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }},YDB_CONNECTION_STRING=${{ secrets.YDB_CONNECTION_STRING }},YDB_METADATA_CREDENTIALS=1
