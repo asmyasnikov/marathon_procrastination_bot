@@ -96,7 +96,7 @@ func (a *Agent) PingUser(ctx context.Context, userID int64) error {
 }
 
 func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (*models.Message, error) {
-	const enterActivityName = "В ответном сообщении напиши название активности"
+	const enterActivityName = "В ОТВЕТНОМ СООБЩЕНИИ (кнопка меню Ответить/Reply) напиши название активности"
 	if update.Message != nil {
 		if update.Message.Text == "/start" {
 			err := a.storage.AddUser(ctx, update.Message.From.ID, update.Message.Chat.ID)
