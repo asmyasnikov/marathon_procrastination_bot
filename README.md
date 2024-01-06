@@ -44,4 +44,5 @@ go run main.go
 * `ydb.viewer` - для выполнения `DQL` запросов
 * `ydb.editor` - для выполнения `DML` и `DDL` запросов
 * `serverless.functions.invoker` - для запуска функции
+* `serverless.functions.admin` - для деплоя через GitHub Actions
 * `iam.serviceAccounts.user` - для деплоя через GitHub Actions
