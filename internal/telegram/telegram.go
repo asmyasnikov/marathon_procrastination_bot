@@ -3,13 +3,11 @@ package telegram
 import (
 	"context"
 	"fmt"
+	"github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
 	"os"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/go-telegram/bot"
-	"github.com/go-telegram/bot/models"
 
 	"marathon_procrastination_bot/internal/env"
 )
@@ -190,21 +188,20 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			})
 		}
 		if update.Message.Text == "/set_rotate_hour" {
-			location := time.Unix(int64(update.Message.Date), 0).Hour() - time.Now().UTC().Hour()
 			rows := make([][]models.InlineKeyboardButton, 0, 4)
 			for i := 0; i < 4; i++ {
 				row := make([]models.InlineKeyboardButton, 0, 6)
 				for j := 0; j < 6; j++ {
 					h := i*6 + j
 					row = append(row, models.InlineKeyboardButton{
-						Text: strconv.Itoa(h), CallbackData: "/set_rotate_hour " + strconv.Itoa((h-location+24)%24),
+						Text: strconv.Itoa(h), CallbackData: "/set_rotate_hour " + strconv.Itoa(h),
 					})
 				}
 				rows = append(rows, row)
 			}
 			return b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.Message.Chat.ID,
-				Text:   "Выбери час ежедневной ротации статистики",
+				Text:   "Выбери час ежедневной ротации статистики (UTC)",
 				ReplyMarkup: &models.InlineKeyboardMarkup{
 					InlineKeyboard: rows,
 				},
