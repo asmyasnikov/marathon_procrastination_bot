@@ -45,7 +45,7 @@ func New(s Storage) (_ *Agent, err error) {
 		storage: s,
 	}
 	agent.bot, err = bot.New(mustToken(),
-		bot.WithSkipGetMe(),
+		//bot.WithSkipGetMe(),
 		bot.WithDefaultHandler(func(ctx context.Context, bot *bot.Bot, update *models.Update) {
 			_, _ = agent.Handle(ctx, bot, update)
 		}),

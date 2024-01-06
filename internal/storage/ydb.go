@@ -38,12 +38,13 @@ func New(ctx context.Context) (*storage, error) {
 		return nil, err
 	}
 	return &storage{
-		db: sql.OpenDB(connector),
-	}, initSchema(nativeDriver)
+		native: nativeDriver,
+		db:     sql.OpenDB(connector),
+	}, nil
 }
 
-func initSchema(d *ydb.Driver) error {
-	connector, err := ydb.Connector(d,
+func (s *storage) UpdateSchema() error {
+	connector, err := ydb.Connector(s.native,
 		ydb.WithDefaultQueryMode(ydb.ScriptingQueryMode),
 		ydb.WithFakeTx(ydb.ScriptingQueryMode),
 		ydb.WithAutoDeclare(),
@@ -67,7 +68,8 @@ func initSchema(d *ydb.Driver) error {
 }
 
 type storage struct {
-	db *sql.DB
+	native *ydb.Driver
+	db     *sql.DB
 }
 
 func (s *storage) UsersForRotate(ctx context.Context, hour int32) (ids []int64, err error) {

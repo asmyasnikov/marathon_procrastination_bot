@@ -18,6 +18,10 @@ func main() {
 		panic(err)
 	}
 
+	if err := s.UpdateSchema(); err != nil {
+		panic(err)
+	}
+
 	go func() {
 		for {
 			select {

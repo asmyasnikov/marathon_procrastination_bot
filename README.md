@@ -46,3 +46,39 @@ go run main.go
 * `serverless.functions.invoker` - для запуска функции
 * `serverless.functions.admin` - для деплоя через GitHub Actions
 * `iam.serviceAccounts.user` - для деплоя через GitHub Actions
+
+#### Миграции схемы
+
+Для применения миграций следует вызвать функцию с телом:
+```json
+{
+  "migrate_schema": true
+}
+```
+
+Например, так:
+```shell
+curl -X POST https://functions.yandexcloud.net/<function-id> 
+   -H "Content-Type: application/json"
+   -d '{"migrate_schema": true}'  
+```
+
+#### Триггер для пробуждения
+
+Функцию можно вызвать для выполнения операций:
+* ротации статистики
+* оповещения пользователей о забытых активностях
+
+Для применения миграций следует вызвать функцию с телом:
+```json
+{
+  "wake_up": true
+}
+```
+
+Например, так:
+```shell
+curl -X POST https://functions.yandexcloud.net/<function-id> 
+   -H "Content-Type: application/json"
+   -d '{"wake_up": true}'  
+```
