@@ -232,6 +232,7 @@ func (s *storage) AddUser(ctx context.Context, userID int64, chatID int64) error
 			if err != nil {
 				return err
 			}
+			return fmt.Errorf("user %d already exists", userID)
 		}
 		return nil
 	})
