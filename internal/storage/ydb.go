@@ -102,7 +102,8 @@ func (s *storage) UsersForNotification(ctx context.Context, freeze time.Duration
 		rows, err := cc.QueryContext(ctx, `
 			SELECT DISTINCT user_id 
 			FROM activities 
-			WHERE COALESCE(last_pontificated, CAST(0 AS Timestamp))<CAST($1 AS Timestamp);
+			WHERE current=0 
+				AND COALESCE(last_pontificated, CAST(0 AS Timestamp))<CAST($1 AS Timestamp);
 			`, time.Unix(int64(time.Now().UnixMilli()/1000/60/60)*60*60, 0).UTC().Add(-freeze),
 		)
 		if err != nil {
