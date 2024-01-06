@@ -27,6 +27,7 @@ type Storage interface {
 	DeleteUserActivity(ctx context.Context, userID int64, activity string) error
 	AppendUserActivity(ctx context.Context, userID int64, activity string) error
 	UserActivities(ctx context.Context, userID int64) (activities []string, _ error)
+	UserRegistrationChatID(ctx context.Context, userID int64) (chatID int64, _ error)
 	UserStats(ctx context.Context, userID int64, activity string) (total uint64, current uint64, err error)
 	RotateUserStats(ctx context.Context, userID int64) error
 	SetUserRotateHour(ctx context.Context, userID int64, hour int32) error
@@ -67,6 +68,10 @@ func (a *Agent) PingUser(ctx context.Context, userID int64) error {
 	if err != nil {
 		return err
 	}
+	chatID, err := a.storage.UserRegistrationChatID(ctx, userID)
+	if err != nil {
+		return err
+	}
 	var builder strings.Builder
 	for _, activity := range activities {
 		total, current, err := a.storage.UserStats(ctx, userID, activity)
@@ -74,11 +79,11 @@ func (a *Agent) PingUser(ctx context.Context, userID int64) error {
 			return err
 		}
 		if current == 0 {
-			fmt.Fprintf(&builder, "\n- %q (%d+%d)", activity, total, current)
+			_, _ = fmt.Fprintf(&builder, "\n- %q (%d+%d)", activity, total, current)
 		}
 	}
 	_, err = a.bot.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: userID,
+		ChatID: chatID,
 		Text: "Алло!!!\n" +
 			"Кажется, ты забыл про свои активности:\n" + builder.String() + "\n\n" +
 			"Используй команду /post - чтобы записать активность",
@@ -157,7 +162,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 						ReplyToMessageID: update.Message.ID,
 					})
 				}
-				fmt.Fprintf(&builder, "\n- %q (%d+%d)", activity, total, current)
+				_, _ = fmt.Fprintf(&builder, "\n- %q (%d+%d)", activity, total, current)
 			}
 			return b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID:           update.Message.Chat.ID,

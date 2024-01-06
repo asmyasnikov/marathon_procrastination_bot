@@ -178,13 +178,8 @@ func (s *storage) SetUserRotateHour(ctx context.Context, userID int64, hour int3
 }
 
 func (s *storage) UserStats(ctx context.Context, userID int64, activity string) (total uint64, current uint64, _ error) {
-	if exists, err := s.isUserExists(ctx, userID); err != nil {
-		return total, current, err
-	} else if !exists {
-		return total, current, fmt.Errorf("user %d not exists", userID)
-	}
-	err := retry.Do(ctx, s.db, func(ctx context.Context, cc *sql.Conn) error {
-		row := cc.QueryRowContext(ctx, `
+	err := retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
+		row := tx.QueryRowContext(ctx, `
 			SELECT total, current 
 			FROM activities 
 			WHERE user_id=$1 AND activity=$2;`,
@@ -265,15 +260,40 @@ func (s *storage) RemoveUser(ctx context.Context, userID int64) error {
 	})
 }
 
+func (s *storage) UserRegistrationChatID(ctx context.Context, userID int64) (chatID int64, _ error) {
+	err := retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
+		row := tx.QueryRowContext(ctx, `
+			SELECT registration_chat_id
+			FROM users
+			WHERE user_id=$1;
+		`, userID)
+		if err := row.Scan(&chatID); err != nil {
+			return err
+		}
+		return row.Err()
+	})
+	return chatID, err
+}
+
 func (s *storage) UserActivities(ctx context.Context, userID int64) (activities []string, _ error) {
-	if exists, err := s.isUserExists(ctx, userID); err != nil {
-		return nil, err
-	} else if !exists {
-		return nil, fmt.Errorf("user %d not found", userID)
-	}
-	err := retry.Do(ctx, s.db, func(ctx context.Context, cc *sql.Conn) error {
+	err := retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
+		row := tx.QueryRowContext(ctx, `
+			SELECT COUNT(*)
+			FROM users
+			WHERE user_id=$1;
+		`, userID)
+		var count uint64
+		if err := row.Scan(&count); err != nil {
+			return err
+		}
+		if err := row.Err(); err != nil {
+			return err
+		}
+		if count == 0 {
+			return fmt.Errorf("user %d not found", userID)
+		}
 		activities = activities[:0]
-		rows, err := cc.QueryContext(ctx,
+		rows, err := tx.QueryContext(ctx,
 			`SELECT activity 
 					FROM activities 
 					WHERE user_id=$1 ORDER BY activity;`,
