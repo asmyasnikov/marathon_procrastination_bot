@@ -86,8 +86,8 @@ func (a *Agent) PingUser(ctx context.Context, userID int64) error {
 	_, err = a.bot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: chatID,
 		Text: "Алло!!!\n" +
-			"Кажется, ты забыл про свои активности:\n" + builder.String() + "\n\n" +
-			"Используй команду /post - чтобы записать активность",
+			"Кажется, ты забыл про свои марафоны:\n" + builder.String() + "\n\n" +
+			"Используй команду /post - чтобы записать участие в марафоне",
 	})
 	if err != nil {
 		return err
@@ -96,7 +96,7 @@ func (a *Agent) PingUser(ctx context.Context, userID int64) error {
 }
 
 func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (*models.Message, error) {
-	const enterActivityName = "В ОТВЕТНОМ СООБЩЕНИИ (кнопка меню Ответить/Reply) напиши название активности"
+	const enterActivityName = "В ОТВЕТНОМ СООБЩЕНИИ (кнопка меню Ответить/Reply) напиши название марафона"
 	if update.Message != nil {
 		if update.Message.Text == "/start" {
 			err := a.storage.AddUser(ctx, update.Message.From.ID, update.Message.Chat.ID)
@@ -113,7 +113,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			return b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.Message.Chat.ID,
 				Text: fmt.Sprintf("Ок, теперь в нашем марафоне участвует @%s\n"+
-					"Используй команду /post - чтобы записать активности",
+					"Используй команду /post - чтобы записать участие в марафоне",
 					update.Message.From.Username,
 				),
 				ReplyToMessageID: update.Message.ID,
@@ -145,7 +145,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			if err != nil {
 				return b.SendMessage(ctx, &bot.SendMessageParams{
 					ChatID: update.Message.Chat.ID,
-					Text: fmt.Sprintf("Не удалось получить активности пользователя @%s: %v",
+					Text: fmt.Sprintf("Не удалось получить марафоны пользователя @%s: %v",
 						update.Message.From.Username,
 						err,
 					),
@@ -158,7 +158,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 				if err != nil {
 					return b.SendMessage(ctx, &bot.SendMessageParams{
 						ChatID: update.Message.Chat.ID,
-						Text: fmt.Sprintf("Не удалось получить статистику активности %q пользователя @%s: %v",
+						Text: fmt.Sprintf("Не удалось получить статистику марафона %q пользователя @%s: %v",
 							activity,
 							update.Message.From.Username,
 							err,
@@ -170,7 +170,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			}
 			return b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID:           update.Message.Chat.ID,
-				Text:             fmt.Sprintf("Статистика активности пользователя @%s:", update.Message.From.Username) + builder.String(),
+				Text:             fmt.Sprintf("Статистика марафонов пользователя @%s:", update.Message.From.Username) + builder.String(),
 				ReplyToMessageID: update.Message.ID,
 			})
 		}
@@ -189,8 +189,8 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			return b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.Message.Chat.ID,
 				Text: fmt.Sprintf("Статистика пользователя @%s обновлена.\n"+
-					"Cтартовал новый день - не забывай про свои активности!\n"+
-					"Используй команду /post - чтобы записать активности",
+					"Cтартовал новый день - не забывай про свои марафоны!\n"+
+					"Используй команду /post - чтобы записать участие в марафоне",
 					update.Message.From.Username,
 				),
 				ReplyToMessageID: update.Message.ID,
@@ -222,7 +222,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			if err != nil {
 				return b.SendMessage(ctx, &bot.SendMessageParams{
 					ChatID: update.Message.Chat.ID,
-					Text: fmt.Sprintf("Не удалось получить список активностей пользователя @%s: %v\n"+
+					Text: fmt.Sprintf("Не удалось получить список марафонов пользователя @%s: %v\n"+
 						"Используй команду /start - чтобы участвовать в марафонах",
 						update.Message.From.Username,
 						err,
@@ -243,7 +243,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			})
 			return b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID:                   update.Message.Chat.ID,
-				Text:                     "Записать активность",
+				Text:                     "Записать участие в марафоне",
 				AllowSendingWithoutReply: true,
 				ReplyMarkup:              keyboard,
 				ReplyToMessageID:         update.Message.ID,
@@ -254,7 +254,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			if err != nil {
 				return b.SendMessage(ctx, &bot.SendMessageParams{
 					ChatID: update.Message.Chat.ID,
-					Text: fmt.Sprintf("Не удалось получить список активностей пользователя @%s: %v\n"+
+					Text: fmt.Sprintf("Не удалось получить список марафонов пользователя @%s: %v\n"+
 						"Используй команду /start - чтобы участвовать в марафонах",
 						update.Message.From.Username,
 						err,
@@ -272,7 +272,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			}
 			return b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID:                   update.Message.Chat.ID,
-				Text:                     "Больше не хочу поддерживать активность",
+				Text:                     "Больше не хочу участвовать в марафоне",
 				AllowSendingWithoutReply: true,
 				ReplyMarkup:              keyboard,
 				ReplyToMessageID:         update.Message.ID,
@@ -285,7 +285,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 				if err != nil {
 					return b.SendMessage(ctx, &bot.SendMessageParams{
 						ChatID: update.Message.Chat.ID,
-						Text: fmt.Sprintf("Не удалось сохранить активность %q пользователя @%s: %v",
+						Text: fmt.Sprintf("Не удалось сохранить участие в марафоне %q пользователя @%s: %v",
 							activity,
 							update.Message.From.Username,
 							err,
@@ -295,8 +295,8 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 				}
 				return b.SendMessage(ctx, &bot.SendMessageParams{
 					ChatID: update.Message.Chat.ID,
-					Text: fmt.Sprintf("Ок, теперь @%s участвует в активности %q\n"+
-						"Используй команду /post - чтобы записать активность",
+					Text: fmt.Sprintf("Ок, теперь @%s участвует в марафоне %q\n"+
+						"Используй команду /post - чтобы записать участие в марафоне",
 						update.Message.From.Username,
 						activity,
 					),
@@ -318,7 +318,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			if err := a.storage.AppendUserActivity(ctx, update.CallbackQuery.Sender.ID, activity); err != nil {
 				return b.SendMessage(ctx, &bot.SendMessageParams{
 					ChatID: update.CallbackQuery.Message.Chat.ID,
-					Text: fmt.Sprintf("Не удалось сохранить активность %q пользователя @%s: %v",
+					Text: fmt.Sprintf("Не удалось сохранить участие в марафоне %q пользователя @%s: %v",
 						activity,
 						update.CallbackQuery.Sender.Username,
 						err,
@@ -329,7 +329,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			return b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.CallbackQuery.Message.Chat.ID,
 				Text: fmt.Sprintf("Активность %q успешна сохранена для @%s\n"+
-					"Используй команду /stats - чтобы посмотреть статистику активностей",
+					"Используй команду /stats - чтобы посмотреть статистику марафонов",
 					activity,
 					update.CallbackQuery.Sender.Username,
 				),
@@ -338,11 +338,11 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 		}
 		if strings.HasPrefix(update.CallbackQuery.Data, "/remove ") {
 			activity := strings.TrimLeft(update.CallbackQuery.Data, "/remove ")
-			err := a.storage.DeleteUserActivity(ctx, update.Message.From.ID, activity)
+			err := a.storage.DeleteUserActivity(ctx, update.CallbackQuery.Sender.ID, activity)
 			if err != nil {
 				return b.SendMessage(ctx, &bot.SendMessageParams{
 					ChatID: update.CallbackQuery.Message.Chat.ID,
-					Text: fmt.Sprintf("Не удалось удалить активность %q пользователя @%s: %v",
+					Text: fmt.Sprintf("Не удалось удалить марафон %q пользователя @%s: %v",
 						activity,
 						update.CallbackQuery.Sender.Username,
 						err,
@@ -352,8 +352,8 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			}
 			return b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.CallbackQuery.Message.Chat.ID,
-				Text: fmt.Sprintf("Ок, теперь @%s больше не участвует в активности %q\n"+
-					"Используй команду /stats - чтобы посмотреть статистику активностей",
+				Text: fmt.Sprintf("Ок, теперь @%s больше не участвует в марафоне %q\n"+
+					"Используй команду /stats - чтобы посмотреть статистику марафонов",
 					update.CallbackQuery.Sender.Username,
 					activity,
 				),
