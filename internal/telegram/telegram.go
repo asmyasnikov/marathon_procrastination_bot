@@ -75,7 +75,7 @@ func (a *Agent) PingUser(ctx context.Context, userID int64) error {
 	var builder strings.Builder
 	for _, activity := range activities {
 		total, current, err := a.storage.UserStats(ctx, userID, activity)
-		if err == nil {
+		if err != nil {
 			return err
 		}
 		if current == 0 {
@@ -88,6 +88,9 @@ func (a *Agent) PingUser(ctx context.Context, userID int64) error {
 			"Кажется, ты забыл про свои активности:\n" + builder.String() + "\n\n" +
 			"Используй команду /post - чтобы записать активность",
 	})
+	if err != nil {
+		return err
+	}
 	return err
 }
 
