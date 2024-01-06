@@ -123,12 +123,22 @@ func (s *storage) UsersForNotification(ctx context.Context, freeze time.Duration
 }
 
 func (s *storage) RotateUserStats(ctx context.Context, userID int64) error {
-	if exists, err := s.isUserExists(ctx, userID); err != nil {
-		return err
-	} else if !exists {
-		return fmt.Errorf("user %d not exists", userID)
-	}
 	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
+		row := tx.QueryRowContext(ctx, `
+			SELECT COUNT(*)
+			FROM users
+			WHERE user_id=$1;
+		`, userID)
+		var count uint64
+		if err := row.Scan(&count); err != nil {
+			return err
+		}
+		if err := row.Err(); err != nil {
+			return err
+		}
+		if count == 0 {
+			return fmt.Errorf("user %d not found")
+		}
 		_, err := tx.ExecContext(ctx, `
 			UPDATE activities SET total=0
 			WHERE user_id=$1 AND current=0;
@@ -158,17 +168,27 @@ func (s *storage) RotateUserStats(ctx context.Context, userID int64) error {
 }
 
 func (s *storage) SetUserRotateHour(ctx context.Context, userID int64, hour int32) error {
-	if exists, err := s.isUserExists(ctx, userID); err != nil {
-		return err
-	} else if !exists {
-		return fmt.Errorf("user %d not exists", userID)
-	}
-	return retry.Do(ctx, s.db, func(ctx context.Context, cc *sql.Conn) error {
-		_, err := cc.ExecContext(ctx, `
+	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
+		row := tx.QueryRowContext(ctx, `
+			SELECT COUNT(*)
+			FROM users
+			WHERE user_id=$1;
+		`, userID)
+		var count uint64
+		if err := row.Scan(&count); err != nil {
+			return err
+		}
+		if err := row.Err(); err != nil {
+			return err
+		}
+		if count == 0 {
+			return fmt.Errorf("user %d not found")
+		}
+		_, err := tx.ExecContext(ctx, `
 			UPDATE users 
-			SET hour_to_rotate_stats=$1
+			SET hour_to_rotate_stats=$1, last_activity_ts=$3
 			WHERE user_id=$2;
-			`, hour, userID,
+			`, hour, userID, time.Now().UTC(),
 		)
 		if err != nil {
 			return err
@@ -180,6 +200,21 @@ func (s *storage) SetUserRotateHour(ctx context.Context, userID int64, hour int3
 func (s *storage) UserStats(ctx context.Context, userID int64, activity string) (total uint64, current uint64, _ error) {
 	err := retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
 		row := tx.QueryRowContext(ctx, `
+			SELECT COUNT(*)
+			FROM users
+			WHERE user_id=$1;
+		`, userID)
+		var count uint64
+		if err := row.Scan(&count); err != nil {
+			return err
+		}
+		if err := row.Err(); err != nil {
+			return err
+		}
+		if count == 0 {
+			return fmt.Errorf("user %d not found")
+		}
+		row = tx.QueryRowContext(ctx, `
 			SELECT total, current 
 			FROM activities 
 			WHERE user_id=$1 AND activity=$2;`,
@@ -210,10 +245,10 @@ func (s *storage) AddUser(ctx context.Context, userID int64, chatID int64) error
 		if count == 0 {
 			_, err := tx.ExecContext(ctx, `
 				INSERT INTO users (
-					user_id, hour_to_rotate_stats, registration_chat_id
+					user_id, hour_to_rotate_stats, registration_chat_id, last_activity_ts
 				) VALUES (
-					$1, 0, $2
-				);`, userID, chatID,
+					$1, 0, $2, $3
+				);`, userID, chatID, time.Now().UTC(),
 			)
 			if err != nil {
 				return err
@@ -221,8 +256,8 @@ func (s *storage) AddUser(ctx context.Context, userID int64, chatID int64) error
 		} else {
 			_, err := tx.ExecContext(ctx, `
 				UPDATE users 
-				SET registration_chat_id=$1 
-				WHERE user_id=$2;`, chatID, userID,
+				SET registration_chat_id=$1, last_activity_ts=$3
+				WHERE user_id=$2;`, chatID, userID, time.Now().UTC(),
 			)
 			if err != nil {
 				return err
@@ -234,12 +269,22 @@ func (s *storage) AddUser(ctx context.Context, userID int64, chatID int64) error
 }
 
 func (s *storage) RemoveUser(ctx context.Context, userID int64) error {
-	if exists, err := s.isUserExists(ctx, userID); err != nil {
-		return err
-	} else if !exists {
-		return fmt.Errorf("user %d not found", userID)
-	}
 	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
+		row := tx.QueryRowContext(ctx, `
+			SELECT COUNT(*)
+			FROM users
+			WHERE user_id=$1;
+		`, userID)
+		var count uint64
+		if err := row.Scan(&count); err != nil {
+			return err
+		}
+		if err := row.Err(); err != nil {
+			return err
+		}
+		if count == 0 {
+			return fmt.Errorf("user %d not found")
+		}
 		_, err := tx.ExecContext(ctx, `
 			DELETE FROM users 
 			WHERE user_id=$1;`,
@@ -263,6 +308,21 @@ func (s *storage) RemoveUser(ctx context.Context, userID int64) error {
 func (s *storage) UserRegistrationChatID(ctx context.Context, userID int64) (chatID int64, _ error) {
 	err := retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
 		row := tx.QueryRowContext(ctx, `
+			SELECT COUNT(*)
+			FROM users
+			WHERE user_id=$1;
+		`, userID)
+		var count uint64
+		if err := row.Scan(&count); err != nil {
+			return err
+		}
+		if err := row.Err(); err != nil {
+			return err
+		}
+		if count == 0 {
+			return fmt.Errorf("user %d not found")
+		}
+		row = tx.QueryRowContext(ctx, `
 			SELECT COALESCE(registration_chat_id, $1)
 			FROM users
 			WHERE user_id=$1;
@@ -315,12 +375,22 @@ func (s *storage) UserActivities(ctx context.Context, userID int64) (activities 
 }
 
 func (s *storage) AppendUserActivity(ctx context.Context, userID int64, activity string) error {
-	if exists, err := s.isUserExists(ctx, userID); err != nil {
-		return err
-	} else if !exists {
-		return fmt.Errorf("user %d not found", userID)
-	}
 	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
+		row := tx.QueryRowContext(ctx, `
+			SELECT COUNT(*)
+			FROM users
+			WHERE user_id=$1;
+		`, userID)
+		var count uint64
+		if err := row.Scan(&count); err != nil {
+			return err
+		}
+		if err := row.Err(); err != nil {
+			return err
+		}
+		if count == 0 {
+			return fmt.Errorf("user %d not found")
+		}
 		_, err := tx.ExecContext(ctx, `
 			UPDATE activities 
 			SET current=current+1, post_ts=$3
@@ -333,7 +403,7 @@ func (s *storage) AppendUserActivity(ctx context.Context, userID int64, activity
 			return err
 		}
 		_, err = tx.ExecContext(ctx, `
-			UPDATE users SET last_post_ts=$1
+			UPDATE users SET last_post_ts=$1, last_activity_ts=$1
 			WHERE user_id=$2;
 			`, time.Now().UTC(), userID,
 		)
@@ -345,13 +415,23 @@ func (s *storage) AppendUserActivity(ctx context.Context, userID int64, activity
 }
 
 func (s *storage) NewUserActivity(ctx context.Context, userID int64, activity string) error {
-	if exists, err := s.isUserExists(ctx, userID); err != nil {
-		return err
-	} else if !exists {
-		return fmt.Errorf("user %d not found", userID)
-	}
-	return retry.Do(ctx, s.db, func(ctx context.Context, cc *sql.Conn) error {
-		_, err := cc.ExecContext(ctx, `
+	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
+		row := tx.QueryRowContext(ctx, `
+			SELECT COUNT(*)
+			FROM users
+			WHERE user_id=$1;
+		`, userID)
+		var count uint64
+		if err := row.Scan(&count); err != nil {
+			return err
+		}
+		if err := row.Err(); err != nil {
+			return err
+		}
+		if count == 0 {
+			return fmt.Errorf("user %d not found")
+		}
+		_, err := tx.ExecContext(ctx, `
 			INSERT INTO activities (
 				user_id, activity, total, current
 			) VALUES (
@@ -361,22 +441,10 @@ func (s *storage) NewUserActivity(ctx context.Context, userID int64, activity st
 		if err != nil {
 			return err
 		}
-		return nil
-	})
-}
-
-func (s *storage) DeleteUserActivity(ctx context.Context, userID int64, activity string) error {
-	if exists, err := s.isUserExists(ctx, userID); err != nil {
-		return err
-	} else if !exists {
-		return fmt.Errorf("user %d not found", userID)
-	}
-	return retry.Do(ctx, s.db, func(ctx context.Context, cc *sql.Conn) error {
-		_, err := cc.ExecContext(ctx, `
-			DELETE FROM activities 
-			WHERE user_id=$1 AND activity=$2;`,
-			userID,
-			activity,
+		_, err = tx.ExecContext(ctx, `
+			UPDATE users SET last_activity_ts=$1
+			WHERE user_id=$2;
+			`, time.Now().UTC(), userID,
 		)
 		if err != nil {
 			return err
@@ -385,18 +453,40 @@ func (s *storage) DeleteUserActivity(ctx context.Context, userID int64, activity
 	})
 }
 
-func (s *storage) isUserExists(ctx context.Context, userID int64) (_ bool, err error) {
-	var count uint64
-	err = retry.Do(ctx, s.db, func(ctx context.Context, cc *sql.Conn) error {
-		row := cc.QueryRowContext(ctx, `
+func (s *storage) DeleteUserActivity(ctx context.Context, userID int64, activity string) error {
+	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
+		row := tx.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			FROM users
 			WHERE user_id=$1;
 		`, userID)
+		var count uint64
 		if err := row.Scan(&count); err != nil {
 			return err
 		}
-		return row.Err()
+		if err := row.Err(); err != nil {
+			return err
+		}
+		if count == 0 {
+			return fmt.Errorf("user %d not found")
+		}
+		_, err := tx.ExecContext(ctx, `
+			DELETE FROM activities 
+			WHERE user_id=$1 AND activity=$2;`,
+			userID,
+			activity,
+		)
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `
+			UPDATE users SET last_activity_ts=$1
+			WHERE user_id=$2;
+			`, time.Now().UTC(), userID,
+		)
+		if err != nil {
+			return err
+		}
+		return nil
 	})
-	return count > 0, err
 }
