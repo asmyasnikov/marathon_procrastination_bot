@@ -1,20 +1,36 @@
-name: Push and Deploy Serverless function
-on: push
+name: YC Function Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
-      - uses: goodsmileduck/yandex-serverless-action@v2
+      - uses: actions/checkout@v2
+      - name: Deploy Function
+        id: sls-func
+        uses: yc-actions/yc-sls-function@v2
         with:
-          description: ${{ github.event.head_commit.message }}
-          token: ${{ secrets.YANDEX_ACCOUNT_TOKEN }}
-          function_id: ${{ secrets.YANDEX_CLOUD_FUNCTION_ID }}
-          service_account: ${{ secrets.YANDEX_CLOUD_SERVICE_ACCOUNT_ID }}
+          yc-sa-json-credentials: ${{ secrets.YANDEX_CLOUD_SERVICE_ACCOUNT_KEY_JSON }}
+          folder-id: ${{ secrets.YANDEX_CLOUD_FOLDER_ID }}
+          function-name: ${{ secrets.YANDEX_CLOUD_FUNCTION_NAME }}
           runtime: 'golang121'
-          memory: '128'
-          execution_timeout: '1s'
-          source: .
-          entrypoint: 'main.Handler'
-          environment: TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }},YDB_CONNECTION_STRING=${{ secrets.YDB_CONNECTION_STRING }},YDB_METADATA_CREDENTIALS=1
+          memory: '128Mb'
+          entrypoint: 'index.Handler'
+          environment: |
+            DEBUG=True
+            COUNT=1
+            TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }}
+            YDB_CONNECTION_STRING=${{ secrets.YDB_CONNECTION_STRING }}
+            YDB_METADATA_CREDENTIALS=1
+          include: |
+            ./internal
+            ./go.mod
+            ./go.sum
+            ./index.go
