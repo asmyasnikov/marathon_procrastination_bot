@@ -99,22 +99,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 	const enterActivityName = "В ответном сообщении напиши название активности"
 	if update.Message != nil {
 		if update.Message.Text == "/start" {
-			_, err := b.SetChatMenuButton(context.Background(), &bot.SetChatMenuButtonParams{
-				ChatID: update.Message.Chat.ID,
-				MenuButton: models.MenuButtonCommands{
-					Type: "commands",
-				},
-			})
-			if err != nil {
-				return b.SendMessage(ctx, &bot.SendMessageParams{
-					ChatID: update.Message.Chat.ID,
-					Text: fmt.Sprintf("Не удалось установить кнопку меню в чятике: %v",
-						err,
-					),
-					ReplyToMessageID: update.Message.ID,
-				})
-			}
-			err = a.storage.AddUser(ctx, update.Message.From.ID, update.Message.Chat.ID)
+			err := a.storage.AddUser(ctx, update.Message.From.ID, update.Message.Chat.ID)
 			if err != nil {
 				return b.SendMessage(ctx, &bot.SendMessageParams{
 					ChatID: update.Message.Chat.ID,
