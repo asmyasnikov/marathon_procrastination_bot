@@ -283,10 +283,11 @@ func (s *storage) AppendUserActivity(ctx context.Context, userID int64, activity
 	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx, `
 			UPDATE activities 
-			SET current=current+1
+			SET current=current+1, post_ts=$3
             WHERE user_id=$1 AND activity=$2;`,
 			userID,
 			activity,
+			time.Now().UTC(),
 		)
 		if err != nil {
 			return err
