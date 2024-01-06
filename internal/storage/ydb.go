@@ -96,7 +96,7 @@ func (s *storage) UsersForRotate(ctx context.Context, hour int32) (ids []int64, 
 	return ids, err
 }
 
-func (s *storage) UsersForNotification(ctx context.Context, freeze time.Duration) (ids []int64, err error) {
+func (s *storage) UsersForNotification(ctx context.Context) (ids []int64, err error) {
 	err = retry.Do(ctx, s.db, func(ctx context.Context, cc *sql.Conn) error {
 		ids = ids[:0]
 		rows, err := cc.QueryContext(ctx, `
@@ -104,7 +104,7 @@ func (s *storage) UsersForNotification(ctx context.Context, freeze time.Duration
 			FROM activities 
 			WHERE current=0 
 				AND COALESCE(last_pontificated, CAST(0 AS Timestamp))<CAST($1 AS Timestamp);
-			`, time.Now().UTC().Add(-freeze),
+			`, time.Now().UTC().Add(-time.Duration(env.FreezeHours())*time.Hour),
 		)
 		if err != nil {
 			return err

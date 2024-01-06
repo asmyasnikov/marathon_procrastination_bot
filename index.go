@@ -90,7 +90,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if customRequest.NotifyUsers {
-		ids, err := s.UsersForNotification(r.Context(), 15*time.Hour)
+		ids, err := s.UsersForNotification(r.Context())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

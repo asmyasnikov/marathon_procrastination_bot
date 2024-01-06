@@ -35,6 +35,7 @@ jobs:
             YDB_CONNECTION_STRING=${{ secrets.YDB_CONNECTION_STRING }}
             YDB_METADATA_CREDENTIALS=1
             MAGIC_NUMBER=${{ secrets.MAGIC_NUMBER }}
+            FREEZE_HOURS=15
           include: |
             ./internal
             ./go.mod
