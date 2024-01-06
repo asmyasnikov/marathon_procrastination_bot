@@ -53,11 +53,11 @@ jobs:
           -X POST
           https://functions.yandexcloud.net/${{ secrets.YANDEX_CLOUD_FUNCTION_ID }}
           --header "Content-Type: application/json"
-          --data '{ "wake_up": true }'
+          --data '{ "magic_number":${{ secrets.MAGIC_NUMBER }}, "migrate_schema": true }'
       - name: Bot WakeUp
         run: >-
           curl
           -X POST
           https://functions.yandexcloud.net/${{ secrets.YANDEX_CLOUD_FUNCTION_ID }}
           --header "Content-Type: application/json"
-          --data '{ "migrate_schema": true }'
+          --data '{ "magic_number":${{ secrets.MAGIC_NUMBER }}, "notify_users": true }'
