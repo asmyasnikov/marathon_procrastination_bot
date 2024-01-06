@@ -80,19 +80,54 @@ curl -X POST https://functions.yandexcloud.net/<function-id>
 #### Триггер для пробуждения
 
 Функцию можно вызвать для выполнения операций:
-* ротации статистики
-* оповещения пользователей о забытых активностях
+* применения миграций
+    Для применения миграций следует вызвать функцию с телом:
+    ```json
+    {
+      "magic_number": <MAGIC_NUMBER>,
+      "migrate_schema": true
+    }
+    ```
+    
+    Например, так:
+    ```shell
+    curl -X POST https://functions.yandexcloud.net/<function-id> 
+       -H "Content-Type: application/json"
+       -d '{"magic_number":<MAGIC_NUMBER>,"migrate_schema":true}'  
+    ```
+* оповещения пользователей о забытых марафонах
+    Для применения миграций следует вызвать функцию с телом:
+    ```json
+    {
+      "magic_number": <MAGIC_NUMBER>,
+      "notify_users": true
+    }
+    ```
 
-Для применения миграций следует вызвать функцию с телом:
-```json
-{
-  "wake_up": true
-}
-```
+    Например, так:
+    ```shell
+    curl -X POST https://functions.yandexcloud.net/<function-id> 
+       -H "Content-Type: application/json"
+       -d '{"magic_number":<MAGIC_NUMBER>,"notify_users":true}'  
+    ```
+* принудительной ротации статистики
+    При этом:
+    * Записи о марафонах за текущий день сбрасываются в ноль. 
+    * Накопленное количество увеличивается на количество записей за текущий день
+    * Если в текущем дне не было записей марафона - накопленное количество сбрасывается в ноль
+ 
+    Для применения миграций следует вызвать функцию с телом:
+    ```json
+    {
+      "magic_number": <MAGIC_NUMBER>,
+      "rotate_stats": true
+    }
+    ```
 
-Например, так:
-```shell
-curl -X POST https://functions.yandexcloud.net/<function-id> 
-   -H "Content-Type: application/json"
-   -d '{"wake_up": true}'  
-```
+  Например, так:
+    ```shell
+    curl -X POST https://functions.yandexcloud.net/<function-id> 
+       -H "Content-Type: application/json"
+       -d '{"magic_number":<MAGIC_NUMBER>,"rotate_stats":true}'  
+    ```
+
