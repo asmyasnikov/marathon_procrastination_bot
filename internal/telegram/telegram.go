@@ -249,28 +249,33 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 				ReplyToMessageID:         update.Message.ID,
 			})
 		}
-		if strings.HasPrefix(update.Message.Text, "/remove ") {
-			activity := strings.TrimLeft(update.Message.Text, "/remove ")
-			err := a.storage.DeleteUserActivity(ctx, update.Message.From.ID, activity)
+		if update.Message.Text == "/remove" {
+			activities, err := a.storage.UserActivities(ctx, update.Message.From.ID)
 			if err != nil {
 				return b.SendMessage(ctx, &bot.SendMessageParams{
 					ChatID: update.Message.Chat.ID,
-					Text: fmt.Sprintf("Не удалось удалить активность %q пользователя @%s: %v",
-						activity,
+					Text: fmt.Sprintf("Не удалось получить список активностей пользователя @%s: %v\n"+
+						"Используй команду /start - чтобы участвовать в марафонах",
 						update.Message.From.Username,
 						err,
 					),
 					ReplyToMessageID: update.Message.ID,
 				})
 			}
+			keyboard := &models.InlineKeyboardMarkup{
+				InlineKeyboard: make([][]models.InlineKeyboardButton, 0, len(activities)+1),
+			}
+			for _, activity := range activities {
+				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, []models.InlineKeyboardButton{
+					{Text: activity, CallbackData: "/remove " + activity},
+				})
+			}
 			return b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: update.Message.Chat.ID,
-				Text: fmt.Sprintf("Ок, теперь @%s больше не участвует в активности %q\n"+
-					"Используй команду /stats - чтобы посмотреть статистику активностей",
-					update.Message.From.Username,
-					activity,
-				),
-				ReplyToMessageID: update.Message.ID,
+				ChatID:                   update.Message.Chat.ID,
+				Text:                     "Больше не хочу поддерживать активность",
+				AllowSendingWithoutReply: true,
+				ReplyMarkup:              keyboard,
+				ReplyToMessageID:         update.Message.ID,
 			})
 		}
 		if update.Message.ReplyToMessage != nil {
@@ -327,6 +332,30 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 					"Используй команду /stats - чтобы посмотреть статистику активностей",
 					activity,
 					update.CallbackQuery.Sender.Username,
+				),
+				ReplyToMessageID: update.CallbackQuery.Message.ID,
+			})
+		}
+		if strings.HasPrefix(update.CallbackQuery.Data, "/remove ") {
+			activity := strings.TrimLeft(update.CallbackQuery.Data, "/remove ")
+			err := a.storage.DeleteUserActivity(ctx, update.Message.From.ID, activity)
+			if err != nil {
+				return b.SendMessage(ctx, &bot.SendMessageParams{
+					ChatID: update.CallbackQuery.Message.Chat.ID,
+					Text: fmt.Sprintf("Не удалось удалить активность %q пользователя @%s: %v",
+						activity,
+						update.CallbackQuery.Sender.Username,
+						err,
+					),
+					ReplyToMessageID: update.CallbackQuery.Message.ID,
+				})
+			}
+			return b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.CallbackQuery.Message.Chat.ID,
+				Text: fmt.Sprintf("Ок, теперь @%s больше не участвует в активности %q\n"+
+					"Используй команду /stats - чтобы посмотреть статистику активностей",
+					update.CallbackQuery.Sender.Username,
+					activity,
 				),
 				ReplyToMessageID: update.CallbackQuery.Message.ID,
 			})
