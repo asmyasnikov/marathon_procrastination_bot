@@ -11,8 +11,12 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-${{ github.ref }}
+      cancel-in-progress: true
     steps:
-      - uses: actions/checkout@v2.3.0
+      - name: Checkout code
+        uses: actions/checkout@v2.3.0
       - name: Deploy Function
         id: sls-func
         uses: yc-actions/yc-sls-function@v2
@@ -35,3 +39,24 @@ jobs:
             ./go.mod
             ./go.sum
             ./index.go
+      - name: Set Telegram WebHook
+        run: >-
+            curl
+            -X POST
+            https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/setWebhook
+            --header "Content-Type: application/json"
+            --data '{ "url": "https://functions.yandexcloud.net/${{ secrets.YANDEX_CLOUD_FUNCTION_ID }}" }'
+      - name: Run YDB Migrations
+        run: >-
+          curl
+          -X POST
+          https://functions.yandexcloud.net/${{ secrets.YANDEX_CLOUD_FUNCTION_ID }}
+          --header "Content-Type: application/json"
+          --data '{ "wake_up": true }'
+      - name: Bot WakeUp
+        run: >-
+          curl
+          -X POST
+          https://functions.yandexcloud.net/${{ secrets.YANDEX_CLOUD_FUNCTION_ID }}
+          --header "Content-Type: application/json"
+          --data '{ "migrate_schema": true }'
