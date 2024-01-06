@@ -34,6 +34,7 @@ jobs:
             TELEGRAM_TOKEN=${{ secrets.TELEGRAM_TOKEN }}
             YDB_CONNECTION_STRING=${{ secrets.YDB_CONNECTION_STRING }}
             YDB_METADATA_CREDENTIALS=1
+            MAGIC_NUMBER=${{ secrets.MAGIC_NUMBER }}
           include: |
             ./internal
             ./go.mod
