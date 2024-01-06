@@ -5,5 +5,5 @@ ALTER TABLE users ADD COLUMN registration_chat_id Int64;
 
 -- +goose Down
 -- +goose StatementBegin
-ALTER TABLE users DROP COLUMN registration_chat_id ;
+ALTER TABLE users DROP COLUMN registration_chat_id;
 -- +goose StatementEnd

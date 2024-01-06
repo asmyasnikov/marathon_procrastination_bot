@@ -21,7 +21,7 @@ func mustToken() string {
 }
 
 type Storage interface {
-	AddUser(ctx context.Context, userID int64) error
+	AddUser(ctx context.Context, userID int64, chatID int64) error
 	RemoveUser(ctx context.Context, userID int64) error
 	NewUserActivity(ctx context.Context, userID int64, activity string) error
 	DeleteUserActivity(ctx context.Context, userID int64, activity string) error
@@ -90,7 +90,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 	const enterActivityName = "В ответном сообщении напиши название активности"
 	if update.Message != nil {
 		if update.Message.Text == "/start" {
-			err := a.storage.AddUser(ctx, update.Message.From.ID)
+			err := a.storage.AddUser(ctx, update.Message.From.ID, update.Message.Chat.ID)
 			if err != nil {
 				return b.SendMessage(ctx, &bot.SendMessageParams{
 					ChatID: update.Message.Chat.ID,
