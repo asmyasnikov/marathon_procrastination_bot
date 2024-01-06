@@ -255,23 +255,10 @@ func (s *storage) AppendUserActivity(ctx context.Context, userID int64, activity
 		return fmt.Errorf("user %d not found", userID)
 	}
 	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
-		row := tx.QueryRowContext(ctx, `
-			SELECT current
-			FROM activities
-			WHERE user_id=? AND activity=?;
-		`, userID, activity)
-		var current uint64
-		if err := row.Scan(&current); err != nil {
-			return err
-		}
-		if err := row.Err(); err != nil {
-			return err
-		}
 		_, err := tx.ExecContext(ctx, `
 			UPDATE activities 
-			SET current=?
+			SET current=current+1
             WHERE user_id=? AND activity=?;`,
-			current+1,
 			userID,
 			activity,
 		)

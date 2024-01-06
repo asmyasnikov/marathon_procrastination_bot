@@ -3,8 +3,8 @@
 CREATE TABLE activities (
     user_id Int64 NOT NULL,
     activity Text NOT NULL,
-    total Uint64 NOT NULL,
-    current Uint64 NOT NULL,
+    total Uint64,
+    current Uint64,
     PRIMARY KEY (user_id, activity)
 );
 -- +goose StatementEnd
