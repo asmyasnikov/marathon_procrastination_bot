@@ -109,149 +109,123 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 				ReplyToMessageID: update.Message.ID,
 			})
 		}
-	}
-	if update.Message.Text == "/stats" {
-		activities, err := a.storage.UserActivities(ctx, update.Message.From.ID)
-		if err != nil {
-			return b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: update.Message.Chat.ID,
-				Text: fmt.Sprintf("Не удалось получить активности пользователя @%s: %v",
-					update.Message.From.Username,
-					err,
-				),
-				ReplyToMessageID: update.Message.ID,
-			})
-		}
-		var builder strings.Builder
-		for _, activity := range activities {
-			total, current, err := a.storage.UserStats(ctx, update.Message.From.ID, activity)
+		if update.Message.Text == "/stats" {
+			activities, err := a.storage.UserActivities(ctx, update.Message.From.ID)
 			if err != nil {
 				return b.SendMessage(ctx, &bot.SendMessageParams{
 					ChatID: update.Message.Chat.ID,
-					Text: fmt.Sprintf("Не удалось получить статистику активности %q пользователя @%s: %v",
-						activity,
+					Text: fmt.Sprintf("Не удалось получить активности пользователя @%s: %v",
 						update.Message.From.Username,
 						err,
 					),
 					ReplyToMessageID: update.Message.ID,
 				})
 			}
-			fmt.Fprintf(&builder, "\n- %q (%d+%d)", activity, total, current)
-		}
-		return b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:           update.Message.Chat.ID,
-			Text:             fmt.Sprintf("Статистика активности пользователя @%s:", update.Message.From.Username) + builder.String(),
-			ReplyToMessageID: update.Message.ID,
-		})
-	}
-	if update.Message.Text == "/rotate" {
-		err := a.storage.RotateUserStats(ctx, update.Message.From.ID)
-		if err != nil {
+			var builder strings.Builder
+			for _, activity := range activities {
+				total, current, err := a.storage.UserStats(ctx, update.Message.From.ID, activity)
+				if err != nil {
+					return b.SendMessage(ctx, &bot.SendMessageParams{
+						ChatID: update.Message.Chat.ID,
+						Text: fmt.Sprintf("Не удалось получить статистику активности %q пользователя @%s: %v",
+							activity,
+							update.Message.From.Username,
+							err,
+						),
+						ReplyToMessageID: update.Message.ID,
+					})
+				}
+				fmt.Fprintf(&builder, "\n- %q (%d+%d)", activity, total, current)
+			}
 			return b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: update.Message.Chat.ID,
-				Text: fmt.Sprintf("Не удалось обновить статистику пользователя @%s: %v",
-					update.Message.From.Username,
-					err,
-				),
+				ChatID:           update.Message.Chat.ID,
+				Text:             fmt.Sprintf("Статистика активности пользователя @%s:", update.Message.From.Username) + builder.String(),
 				ReplyToMessageID: update.Message.ID,
 			})
 		}
-		return b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text: fmt.Sprintf("Статистика пользователя @%s обновлена.\n"+
-				"Cтартовал новый день - не забывай про свои активности!\n"+
-				"Используй команду /post - чтобы записать активности",
-				update.Message.From.Username,
-			),
-			ReplyToMessageID: update.Message.ID,
-		})
-	}
-	if update.Message.Text == "/set_rotate_hour" {
-		location := time.Unix(int64(update.Message.Date), 0).Hour() - time.Now().UTC().Hour()
-		rows := make([][]models.InlineKeyboardButton, 0, 4)
-		for i := 0; i < 4; i++ {
-			row := make([]models.InlineKeyboardButton, 0, 6)
-			for j := 0; j < 6; j++ {
-				h := i*6 + j
-				row = append(row, models.InlineKeyboardButton{
-					Text: strconv.Itoa(h), CallbackData: "/set_rotate_hour " + strconv.Itoa((h-location+24)%24),
+		if update.Message.Text == "/rotate" {
+			err := a.storage.RotateUserStats(ctx, update.Message.From.ID)
+			if err != nil {
+				return b.SendMessage(ctx, &bot.SendMessageParams{
+					ChatID: update.Message.Chat.ID,
+					Text: fmt.Sprintf("Не удалось обновить статистику пользователя @%s: %v",
+						update.Message.From.Username,
+						err,
+					),
+					ReplyToMessageID: update.Message.ID,
 				})
 			}
-			rows = append(rows, row)
-		}
-		return b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Выбери час ежедневной ротации статистики",
-			ReplyMarkup: &models.InlineKeyboardMarkup{
-				InlineKeyboard: rows,
-			},
-			ReplyToMessageID: update.Message.ID,
-		})
-	}
-	if update.Message.Text == "/post" {
-		activities, err := a.storage.UserActivities(ctx, update.Message.From.ID)
-		if err != nil {
 			return b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.Message.Chat.ID,
-				Text: fmt.Sprintf("Не удалось получить список активностей пользователя @%s: %v\n"+
-					"Используй команду /start - чтобы участвовать в марафонах",
+				Text: fmt.Sprintf("Статистика пользователя @%s обновлена.\n"+
+					"Cтартовал новый день - не забывай про свои активности!\n"+
+					"Используй команду /post - чтобы записать активности",
 					update.Message.From.Username,
-					err,
 				),
 				ReplyToMessageID: update.Message.ID,
 			})
 		}
-		keyboard := &models.InlineKeyboardMarkup{
-			InlineKeyboard: make([][]models.InlineKeyboardButton, 0, len(activities)+1),
+		if update.Message.Text == "/set_rotate_hour" {
+			location := time.Unix(int64(update.Message.Date), 0).Hour() - time.Now().UTC().Hour()
+			rows := make([][]models.InlineKeyboardButton, 0, 4)
+			for i := 0; i < 4; i++ {
+				row := make([]models.InlineKeyboardButton, 0, 6)
+				for j := 0; j < 6; j++ {
+					h := i*6 + j
+					row = append(row, models.InlineKeyboardButton{
+						Text: strconv.Itoa(h), CallbackData: "/set_rotate_hour " + strconv.Itoa((h-location+24)%24),
+					})
+				}
+				rows = append(rows, row)
+			}
+			return b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: update.Message.Chat.ID,
+				Text:   "Выбери час ежедневной ротации статистики",
+				ReplyMarkup: &models.InlineKeyboardMarkup{
+					InlineKeyboard: rows,
+				},
+				ReplyToMessageID: update.Message.ID,
+			})
 		}
-		for _, activity := range activities {
+		if update.Message.Text == "/post" {
+			activities, err := a.storage.UserActivities(ctx, update.Message.From.ID)
+			if err != nil {
+				return b.SendMessage(ctx, &bot.SendMessageParams{
+					ChatID: update.Message.Chat.ID,
+					Text: fmt.Sprintf("Не удалось получить список активностей пользователя @%s: %v\n"+
+						"Используй команду /start - чтобы участвовать в марафонах",
+						update.Message.From.Username,
+						err,
+					),
+					ReplyToMessageID: update.Message.ID,
+				})
+			}
+			keyboard := &models.InlineKeyboardMarkup{
+				InlineKeyboard: make([][]models.InlineKeyboardButton, 0, len(activities)+1),
+			}
+			for _, activity := range activities {
+				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, []models.InlineKeyboardButton{
+					{Text: activity + "+1", CallbackData: "/post " + activity},
+				})
+			}
 			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, []models.InlineKeyboardButton{
-				{Text: activity + "+1", CallbackData: "/post " + activity},
+				{Text: "Новый марафон", CallbackData: "/add"},
 			})
-		}
-		keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, []models.InlineKeyboardButton{
-			{Text: "Новый марафон", CallbackData: "/add"},
-		})
-		return b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID:                   update.Message.Chat.ID,
-			Text:                     "Записать активность",
-			AllowSendingWithoutReply: true,
-			ReplyMarkup:              keyboard,
-			ReplyToMessageID:         update.Message.ID,
-		})
-	}
-	if strings.HasPrefix(update.Message.Text, "/remove ") {
-		activity := strings.TrimLeft(update.Message.Text, "/remove ")
-		err := a.storage.DeleteUserActivity(ctx, update.Message.From.ID, activity)
-		if err != nil {
 			return b.SendMessage(ctx, &bot.SendMessageParams{
-				ChatID: update.Message.Chat.ID,
-				Text: fmt.Sprintf("Не удалось удалить активность %q пользователя @%s: %v",
-					activity,
-					update.Message.From.Username,
-					err,
-				),
-				ReplyToMessageID: update.Message.ID,
+				ChatID:                   update.Message.Chat.ID,
+				Text:                     "Записать активность",
+				AllowSendingWithoutReply: true,
+				ReplyMarkup:              keyboard,
+				ReplyToMessageID:         update.Message.ID,
 			})
 		}
-		return b.SendMessage(ctx, &bot.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text: fmt.Sprintf("Ок, теперь @%s больше не участвует в активности %q\n"+
-				"Используй команду /stats - чтобы посмотреть статистику активностей",
-				update.Message.From.Username,
-				activity,
-			),
-			ReplyToMessageID: update.Message.ID,
-		})
-	}
-	if update.Message.ReplyToMessage != nil {
-		if update.Message.ReplyToMessage.Text == enterActivityName {
-			activity := update.Message.Text
-			err := a.storage.NewUserActivity(ctx, update.Message.From.ID, activity)
+		if strings.HasPrefix(update.Message.Text, "/remove ") {
+			activity := strings.TrimLeft(update.Message.Text, "/remove ")
+			err := a.storage.DeleteUserActivity(ctx, update.Message.From.ID, activity)
 			if err != nil {
 				return b.SendMessage(ctx, &bot.SendMessageParams{
 					ChatID: update.Message.Chat.ID,
-					Text: fmt.Sprintf("Не удалось сохранить активность %q пользователя @%s: %v",
+					Text: fmt.Sprintf("Не удалось удалить активность %q пользователя @%s: %v",
 						activity,
 						update.Message.From.Username,
 						err,
@@ -261,13 +235,39 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			}
 			return b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.Message.Chat.ID,
-				Text: fmt.Sprintf("Ок, теперь @%s участвует в активности %q\n"+
-					"Используй команду /post - чтобы записать активность",
+				Text: fmt.Sprintf("Ок, теперь @%s больше не участвует в активности %q\n"+
+					"Используй команду /stats - чтобы посмотреть статистику активностей",
 					update.Message.From.Username,
 					activity,
 				),
 				ReplyToMessageID: update.Message.ID,
 			})
+		}
+		if update.Message.ReplyToMessage != nil {
+			if update.Message.ReplyToMessage.Text == enterActivityName {
+				activity := update.Message.Text
+				err := a.storage.NewUserActivity(ctx, update.Message.From.ID, activity)
+				if err != nil {
+					return b.SendMessage(ctx, &bot.SendMessageParams{
+						ChatID: update.Message.Chat.ID,
+						Text: fmt.Sprintf("Не удалось сохранить активность %q пользователя @%s: %v",
+							activity,
+							update.Message.From.Username,
+							err,
+						),
+						ReplyToMessageID: update.Message.ID,
+					})
+				}
+				return b.SendMessage(ctx, &bot.SendMessageParams{
+					ChatID: update.Message.Chat.ID,
+					Text: fmt.Sprintf("Ок, теперь @%s участвует в активности %q\n"+
+						"Используй команду /post - чтобы записать активность",
+						update.Message.From.Username,
+						activity,
+					),
+					ReplyToMessageID: update.Message.ID,
+				})
+			}
 		}
 	}
 	if update.CallbackQuery != nil {
