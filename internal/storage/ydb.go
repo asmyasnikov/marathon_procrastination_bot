@@ -76,8 +76,7 @@ func (s *storage) UsersForRotate(ctx context.Context, hour int32) (ids []int64, 
 		rows, err := cc.QueryContext(ctx, `
 			SELECT user_id 
 			FROM users 
-			WHERE 
-			    hour_to_rotate_stats=? AND last_stats_rotate_ts<?;
+			WHERE hour_to_rotate_stats=? AND last_stats_rotate_ts<?;
 		`, hour, time.Unix(int64(time.Now().UnixMilli()/1000/60/60-23)*60*60, 0).UTC())
 		if err != nil {
 			return err
