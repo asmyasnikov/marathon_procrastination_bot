@@ -64,6 +64,30 @@ func (a *Agent) Storage() Storage {
 	return a.storage
 }
 
+func (a *Agent) PingUser(ctx context.Context, userID int64) error {
+	activities, err := a.storage.UserActivities(ctx, userID)
+	if err != nil {
+		return err
+	}
+	var builder strings.Builder
+	for _, activity := range activities {
+		total, current, err := a.storage.UserStats(ctx, userID, activity)
+		if err == nil {
+			return err
+		}
+		if current == 0 {
+			fmt.Fprintf(&builder, "\n- %q (%d+%d)", activity, total, current)
+		}
+	}
+	_, err = a.bot.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: userID,
+		Text: "Алло!!!\n" +
+			"Кажется, ты забыл про свои активности:\n" + builder.String() + "\n\n" +
+			"Используй команду /post - чтобы записать активность",
+	})
+	return err
+}
+
 func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (*models.Message, error) {
 	const enterActivityName = "В ответном сообщении напиши название активности"
 	if update.Message != nil {

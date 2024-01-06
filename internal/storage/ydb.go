@@ -96,6 +96,31 @@ func (s *storage) UsersForRotate(ctx context.Context, hour int32) (ids []int64, 
 	return ids, err
 }
 
+func (s *storage) UsersForNotification(ctx context.Context, freeze time.Duration) (ids []int64, err error) {
+	err = retry.Do(ctx, s.db, func(ctx context.Context, cc *sql.Conn) error {
+		ids = ids[:0]
+		rows, err := cc.QueryContext(ctx, `
+			SELECT DISTINCT user_id 
+			FROM activities 
+			WHERE COALESCE(last_pontificated, CAST(0 AS Timestamp))<CAST(? AS Timestamp);
+			`, time.Unix(int64(time.Now().UnixMilli()/1000/60/60)*60*60, 0).UTC().Add(-freeze),
+		)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = rows.Close() }()
+		for rows.Next() {
+			var id int64
+			if err := rows.Scan(&id); err != nil {
+				return err
+			}
+			ids = append(ids, id)
+		}
+		return rows.Err()
+	})
+	return ids, err
+}
+
 func (s *storage) RotateUserStats(ctx context.Context, userID int64) error {
 	if exists, err := s.isUserExists(ctx, userID); err != nil {
 		return err
