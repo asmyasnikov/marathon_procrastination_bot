@@ -32,7 +32,7 @@ func New(ctx context.Context) (*storage, error) {
 	connector, err := ydb.Connector(nativeDriver,
 		ydb.WithTablePathPrefix(nativeDriver.Name()),
 		ydb.WithAutoDeclare(),
-		ydb.WithPositionalArgs(),
+		ydb.WithNumericArgs(),
 	)
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func (s *storage) UsersForRotate(ctx context.Context, hour int32) (ids []int64, 
 		rows, err := cc.QueryContext(ctx, `
 			SELECT user_id 
 			FROM users 
-			WHERE hour_to_rotate_stats=? AND last_stats_rotate_ts<?;
+			WHERE hour_to_rotate_stats=$1 AND last_stats_rotate_ts<$2;
 		`, hour, time.Unix(int64(time.Now().UnixMilli()/1000/60/60-23)*60*60, 0).UTC())
 		if err != nil {
 			return err
@@ -102,7 +102,7 @@ func (s *storage) UsersForNotification(ctx context.Context, freeze time.Duration
 		rows, err := cc.QueryContext(ctx, `
 			SELECT DISTINCT user_id 
 			FROM activities 
-			WHERE COALESCE(last_pontificated, CAST(0 AS Timestamp))<CAST(? AS Timestamp);
+			WHERE COALESCE(last_pontificated, CAST(0 AS Timestamp))<CAST($1 AS Timestamp);
 			`, time.Unix(int64(time.Now().UnixMilli()/1000/60/60)*60*60, 0).UTC().Add(-freeze),
 		)
 		if err != nil {
@@ -130,7 +130,7 @@ func (s *storage) RotateUserStats(ctx context.Context, userID int64) error {
 	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx, `
 			UPDATE activities SET total=0
-			WHERE user_id=? AND current=0;
+			WHERE user_id=$1 AND current=0;
 			`, userID,
 		)
 		if err != nil {
@@ -138,15 +138,15 @@ func (s *storage) RotateUserStats(ctx context.Context, userID int64) error {
 		}
 		_, err = tx.ExecContext(ctx, `
 			UPDATE activities SET total=total+current, current=0
-			WHERE user_id=? AND current>0;
+			WHERE user_id=$1 AND current>0;
 			`, userID,
 		)
 		if err != nil {
 			return err
 		}
 		_, err = tx.ExecContext(ctx, `
-			UPDATE users SET last_stats_rotate_ts=?
-			WHERE user_id=?;
+			UPDATE users SET last_stats_rotate_ts=$1
+			WHERE user_id=$1;
 			`, time.Now().UTC(), userID,
 		)
 		if err != nil {
@@ -165,8 +165,8 @@ func (s *storage) SetUserRotateHour(ctx context.Context, userID int64, hour int3
 	return retry.Do(ctx, s.db, func(ctx context.Context, cc *sql.Conn) error {
 		_, err := cc.ExecContext(ctx, `
 			UPDATE users 
-			SET hour_to_rotate_stats=?
-			WHERE user_id=?;
+			SET hour_to_rotate_stats=$1
+			WHERE user_id=$2;
 			`, hour, userID,
 		)
 		if err != nil {
@@ -186,7 +186,7 @@ func (s *storage) UserStats(ctx context.Context, userID int64, activity string) 
 		row := cc.QueryRowContext(ctx, `
 			SELECT total, current 
 			FROM activities 
-			WHERE user_id=? AND activity=?;`,
+			WHERE user_id=$1 AND activity=$2;`,
 			userID, activity,
 		)
 		if err := row.Scan(&total, &current); err != nil {
@@ -208,7 +208,7 @@ func (s *storage) AddUser(ctx context.Context, userID int64) error {
 			INSERT INTO users (
 				user_id, hour_to_rotate_stats
 			) VALUES (
-				?, 12
+				$1, 0
 			);`, userID,
 		)
 		if err != nil {
@@ -227,7 +227,7 @@ func (s *storage) RemoveUser(ctx context.Context, userID int64) error {
 	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx, `
 			DELETE FROM users 
-			WHERE user_id=?;`,
+			WHERE user_id=$1;`,
 			userID,
 		)
 		if err != nil {
@@ -235,7 +235,7 @@ func (s *storage) RemoveUser(ctx context.Context, userID int64) error {
 		}
 		_, err = tx.ExecContext(ctx, `
 			DELETE FROM activities 
-			WHERE user_id=?;`,
+			WHERE user_id=$1;`,
 			userID,
 		)
 		if err != nil {
@@ -256,7 +256,7 @@ func (s *storage) UserActivities(ctx context.Context, userID int64) (activities 
 		rows, err := cc.QueryContext(ctx,
 			`SELECT activity 
 					FROM activities 
-					WHERE user_id=? ORDER BY activity;`,
+					WHERE user_id=$1 ORDER BY activity;`,
 			userID,
 		)
 		if err != nil {
@@ -284,7 +284,7 @@ func (s *storage) AppendUserActivity(ctx context.Context, userID int64, activity
 		_, err := tx.ExecContext(ctx, `
 			UPDATE activities 
 			SET current=current+1
-            WHERE user_id=? AND activity=?;`,
+            WHERE user_id=$1 AND activity=$2;`,
 			userID,
 			activity,
 		)
@@ -292,8 +292,8 @@ func (s *storage) AppendUserActivity(ctx context.Context, userID int64, activity
 			return err
 		}
 		_, err = tx.ExecContext(ctx, `
-			UPDATE users SET last_post_ts=?
-			WHERE user_id=?;
+			UPDATE users SET last_post_ts=$1
+			WHERE user_id=$2;
 			`, time.Now().UTC(), userID,
 		)
 		if err != nil {
@@ -314,7 +314,7 @@ func (s *storage) NewUserActivity(ctx context.Context, userID int64, activity st
 			INSERT INTO activities (
 				user_id, activity, total, current
 			) VALUES (
-				?, ?, 0, 0
+				$1, $2, 0, 0
 			);`, userID, activity,
 		)
 		if err != nil {
@@ -333,7 +333,7 @@ func (s *storage) DeleteUserActivity(ctx context.Context, userID int64, activity
 	return retry.Do(ctx, s.db, func(ctx context.Context, cc *sql.Conn) error {
 		_, err := cc.ExecContext(ctx, `
 			DELETE FROM activities 
-			WHERE user_id=? AND activity=?;`,
+			WHERE user_id=$1 AND activity=$2;`,
 			userID,
 			activity,
 		)
@@ -350,7 +350,7 @@ func (s *storage) isUserExists(ctx context.Context, userID int64) (_ bool, err e
 		row := cc.QueryRowContext(ctx, `
 			SELECT COUNT(*)
 			FROM users
-			WHERE user_id=?;
+			WHERE user_id=$1;
 		`, userID)
 		if err := row.Scan(&count); err != nil {
 			return err
