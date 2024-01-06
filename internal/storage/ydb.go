@@ -263,7 +263,7 @@ func (s *storage) RemoveUser(ctx context.Context, userID int64) error {
 func (s *storage) UserRegistrationChatID(ctx context.Context, userID int64) (chatID int64, _ error) {
 	err := retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
 		row := tx.QueryRowContext(ctx, `
-			SELECT registration_chat_id
+			SELECT COALESCE(registration_chat_id, $1)
 			FROM users
 			WHERE user_id=$1;
 		`, userID)
