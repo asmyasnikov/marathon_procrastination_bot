@@ -41,6 +41,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 			MagicNumber   int  `json:"magic_number,omitempty"`
 			RotateStats   bool `json:"rotate_stats,omitempty"`
 			NotifyUsers   bool `json:"notify_users,omitempty"`
+			NotifyWelcome bool `json:"notify_users,omitempty"`
 			MigrateSchema bool `json:"migrate_schema,omitempty"`
 		}
 	)
@@ -97,6 +98,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, id := range ids {
 			if err := agent.PingUser(r.Context(), id); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+	}
+
+	if customRequest.NotifyWelcome {
+		ids, err := s.UsersWithoutActivities(r.Context())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		for _, id := range ids {
+			if err := agent.Welcome(r.Context(), id); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}

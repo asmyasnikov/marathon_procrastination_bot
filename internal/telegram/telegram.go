@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -15,15 +16,21 @@ import (
 
 const welcome = `
 
-**Правила марафона!!!**
+⚡️⚡️⚡️Правила марафона ⚡️⚡️⚡️
 
-Заводишь себе ***Новый марафон*** (привычку, обязанность) через /post и **каждый** день выполняешь то, что задумал.  
+1. Заводишь себе 🎯🎯🎯Новый марафон🎯🎯🎯 через /post 
+Это типа привычку или обязанность, которую хочешь тренить. 
+
+2. и каждый день выполняешь то, что задумал.  
 При этом отписываешься в ботике, что выполнил.
-Ботик считает непрерывное количество дней - это твоя ачивка (как у зависимых медальки "дней в завязке").
-Если пропускаешь день - счетчик непрерывного количества дней сбрасывается в **НОЛЬ**. 
-Так что не пропускай!!!
 
-Удачи тебе, друг мой!
+3. Ботик считает непрерывное количество дней - это твоя ачивка 💪 (как у зависимых медальки 'дней в завязке').
+
+4. Если пропускаешь день - счетчик непрерывного количества дней сбрасывается в НОЛЬ. 
+
+Так что не пропускай 🤬
+
+⭐️⭐️⭐️Удачи тебе, друг мой! ⭐️⭐️⭐️
 `
 
 func mustToken() string {
@@ -58,9 +65,12 @@ func New(s Storage) (_ *Agent, err error) {
 		storage: s,
 	}
 	agent.bot, err = bot.New(mustToken(),
-		//bot.WithSkipGetMe(),
+		bot.WithSkipGetMe(),
 		bot.WithDefaultHandler(func(ctx context.Context, bot *bot.Bot, update *models.Update) {
-			_, _ = agent.Handle(ctx, bot, update)
+			_, err := agent.Handle(ctx, bot, update)
+			if err != nil {
+				log.Println(err)
+			}
 		}),
 	)
 	if err != nil {
@@ -113,6 +123,21 @@ func (a *Agent) PingUser(ctx context.Context, userID int64) error {
 	return err
 }
 
+func (a *Agent) Welcome(ctx context.Context, userID int64) error {
+	chatID, err := a.storage.UserRegistrationChatID(ctx, userID)
+	if err != nil {
+		return err
+	}
+	_, err = a.bot.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: chatID,
+		Text:   welcome,
+	})
+	if err != nil {
+		return err
+	}
+	return err
+}
+
 func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (*models.Message, error) {
 	const enterActivityName = "В ОТВЕТНОМ СООБЩЕНИИ (кнопка меню Ответить/Reply) напиши название марафона"
 	if update.Message != nil {
@@ -128,14 +153,24 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 					ReplyToMessageID: update.Message.ID,
 				})
 			}
-			return b.SendMessage(ctx, &bot.SendMessageParams{
+			msg, err := b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.Message.Chat.ID,
 				Text: fmt.Sprintf("Ок, теперь в нашем марафоне участвует @%s",
 					update.Message.From.Username,
-				) + welcome,
-				ParseMode:        models.ParseModeMarkdown,
+				),
 				ReplyToMessageID: update.Message.ID,
 			})
+			if err != nil {
+				return b.SendMessage(ctx, &bot.SendMessageParams{
+					ChatID: update.Message.Chat.ID,
+					Text: fmt.Sprintf("Не удалось сохранить пользователя @%s: %v",
+						update.Message.From.Username,
+						err,
+					),
+					ReplyToMessageID: update.Message.ID,
+				})
+			}
+			return msg, a.Welcome(ctx, update.Message.From.ID)
 		}
 		if update.Message.Text == "/stop" {
 			err := a.storage.RemoveUser(ctx, update.Message.From.ID)
@@ -167,7 +202,6 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 						update.Message.From.Username,
 						err,
 					),
-					ParseMode:        models.ParseModeMarkdown,
 					ReplyToMessageID: update.Message.ID,
 				})
 			}

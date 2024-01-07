@@ -122,6 +122,34 @@ func (s *storage) UsersForNotification(ctx context.Context) (ids []int64, err er
 	return ids, err
 }
 
+func (s *storage) UsersWithoutActivities(ctx context.Context) (ids []int64, err error) {
+	err = retry.Do(ctx, s.db, func(ctx context.Context, cc *sql.Conn) error {
+		ids = ids[:0]
+		rows, err := cc.QueryContext(ctx, `
+			SELECT user_id 
+			FROM users
+			WHERE user_id NOT IN(
+			    SELECT DISTINCT user_id
+				FROM activities 
+			)
+			`, time.Now().UTC().Add(-time.Duration(env.FreezeHours())*time.Hour),
+		)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = rows.Close() }()
+		for rows.Next() {
+			var id int64
+			if err := rows.Scan(&id); err != nil {
+				return err
+			}
+			ids = append(ids, id)
+		}
+		return rows.Err()
+	})
+	return ids, err
+}
+
 func (s *storage) RotateUserStats(ctx context.Context, userID int64) error {
 	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
 		row := tx.QueryRowContext(ctx, `
