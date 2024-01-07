@@ -178,7 +178,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 						ReplyToMessageID: update.Message.ID,
 					})
 				}
-				_, _ = fmt.Fprintf(&builder, "\n- %q (%d+%d)", activity, total, current)
+				_, _ = fmt.Fprintf(&builder, "\n- %q (дней непрерывно: **%d**, за последние сутки: **%d**)", activity, total, current)
 			}
 			return b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID:           update.Message.Chat.ID,
