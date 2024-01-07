@@ -93,13 +93,18 @@ func (a *Agent) PingUser(ctx context.Context, userID int64) error {
 			return err
 		}
 		if current == 0 {
-			_, _ = fmt.Fprintf(&builder, "\n- %q (%d+%d)", activity, total, current)
+			_, _ = fmt.Fprintf(&builder, "\n- %q (дней непрерывно: **%d**, за последние сутки: **%d**)", activity, total, current)
 		}
+	}
+	name, err := a.bot.GetMyName(ctx, &bot.GetMyNameParams{})
+	if err != nil {
+		return err
 	}
 	_, err = a.bot.SendMessage(ctx, &bot.SendMessageParams{
 		ChatID: chatID,
 		Text: "Алло!!!\n" +
-			"Кажется, ты забыл про свои марафоны:\n" + builder.String() + "\n\n" +
+			"На связи @" + name.Name + "\n" +
+			"Нежно напоминаю тебе про твои марафоны:\n" + builder.String() + "\n\n" +
 			"Используй команду /post - чтобы записать участие в марафоне",
 	})
 	if err != nil {
