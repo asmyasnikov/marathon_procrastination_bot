@@ -283,7 +283,7 @@ func (s *storage) RemoveUser(ctx context.Context, userID int64) error {
 			return err
 		}
 		if count == 0 {
-			return fmt.Errorf("user %d not found")
+			return fmt.Errorf("user %d not found", userID)
 		}
 		_, err := tx.ExecContext(ctx, `
 			DELETE FROM users 
