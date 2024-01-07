@@ -231,11 +231,11 @@ func (s *storage) UserStats(ctx context.Context, userID int64, activity string) 
 func (s *storage) AddUser(ctx context.Context, userID int64, chatID int64) error {
 	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx, `
-				UPSERT INTO users (
-					user_id, hour_to_rotate_stats, registration_chat_id, last_activity_ts
-				) VALUES (
-					$1, 0, $2, $3
-				);`, userID, chatID, time.Now().UTC(),
+			UPSERT INTO users (
+				user_id, hour_to_rotate_stats, registration_chat_id, last_activity_ts
+			) VALUES (
+				$1, $2, $3, $4
+			);`, userID, 0, chatID, time.Now().UTC(),
 		)
 		if err != nil {
 			return err
