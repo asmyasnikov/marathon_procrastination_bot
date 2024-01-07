@@ -13,6 +13,19 @@ import (
 	"marathon_procrastination_bot/internal/env"
 )
 
+const welcome = `
+
+**Правила марафона!!!**
+
+Заводишь себе ***Новый марафон*** (привычку, обязанность) через /post и **каждый** день выполняешь то, что задумал.  
+При этом отписываешься в ботике, что выполнил.
+Ботик считает непрерывное количество дней - это твоя ачивка (как у зависимых медальки "дней в завязке").
+Если пропускаешь день - счетчик непрерывного количества дней сбрасывается в **НОЛЬ**. 
+Так что не пропускай!!!
+
+Удачи тебе, друг мой!
+`
+
 func mustToken() string {
 	t, has := os.LookupEnv(env.TELEGRAM_TOKEN)
 	if !has {
@@ -112,10 +125,9 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			}
 			return b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: update.Message.Chat.ID,
-				Text: fmt.Sprintf("Ок, теперь в нашем марафоне участвует @%s\n"+
-					"Используй команду /post - чтобы записать участие в марафоне",
+				Text: fmt.Sprintf("Ок, теперь в нашем марафоне участвует @%s",
 					update.Message.From.Username,
-				),
+				) + welcome,
 				ReplyToMessageID: update.Message.ID,
 			})
 		}
