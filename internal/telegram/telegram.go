@@ -128,6 +128,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 				Text: fmt.Sprintf("Ок, теперь в нашем марафоне участвует @%s",
 					update.Message.From.Username,
 				) + welcome,
+				ParseMode:        models.ParseModeMarkdown,
 				ReplyToMessageID: update.Message.ID,
 			})
 		}
@@ -161,6 +162,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 						update.Message.From.Username,
 						err,
 					),
+					ParseMode:        models.ParseModeMarkdown,
 					ReplyToMessageID: update.Message.ID,
 				})
 			}
