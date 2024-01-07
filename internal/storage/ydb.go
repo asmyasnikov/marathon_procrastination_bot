@@ -230,18 +230,6 @@ func (s *storage) UserStats(ctx context.Context, userID int64, activity string) 
 
 func (s *storage) AddUser(ctx context.Context, userID int64, chatID int64) error {
 	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
-		row := tx.QueryRowContext(ctx, `
-			SELECT COUNT(*)
-			FROM users
-			WHERE user_id=$1;
-		`, userID)
-		var count uint64
-		if err := row.Scan(&count); err != nil {
-			return err
-		}
-		if err := row.Err(); err != nil {
-			return err
-		}
 		_, err := tx.ExecContext(ctx, `
 				UPSERT INTO users (
 					user_id, hour_to_rotate_stats, registration_chat_id, last_activity_ts
@@ -251,9 +239,6 @@ func (s *storage) AddUser(ctx context.Context, userID int64, chatID int64) error
 		)
 		if err != nil {
 			return err
-		}
-		if count > 0 {
-			return fmt.Errorf("user %d already exists", userID)
 		}
 		return nil
 	})
