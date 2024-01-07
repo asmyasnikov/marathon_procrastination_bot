@@ -249,7 +249,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 			}
 			for _, activity := range activities {
 				keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, []models.InlineKeyboardButton{
-					{Text: activity + "+1", CallbackData: "/post " + activity},
+					{Text: fmt.Sprintf("%q+1", activity), CallbackData: "/post " + activity},
 				})
 			}
 			keyboard.InlineKeyboard = append(keyboard.InlineKeyboard, []models.InlineKeyboardButton{
