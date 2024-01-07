@@ -242,26 +242,17 @@ func (s *storage) AddUser(ctx context.Context, userID int64, chatID int64) error
 		if err := row.Err(); err != nil {
 			return err
 		}
-		if count == 0 {
-			_, err := tx.ExecContext(ctx, `
-				INSERT INTO users (
+		_, err := tx.ExecContext(ctx, `
+				UPSERT INTO users (
 					user_id, hour_to_rotate_stats, registration_chat_id, last_activity_ts
 				) VALUES (
 					$1, 0, $2, $3
 				);`, userID, chatID, time.Now().UTC(),
-			)
-			if err != nil {
-				return err
-			}
-		} else {
-			_, err := tx.ExecContext(ctx, `
-				UPDATE users 
-				SET registration_chat_id=$1, last_activity_ts=$3
-				WHERE user_id=$2;`, chatID, userID, time.Now().UTC(),
-			)
-			if err != nil {
-				return err
-			}
+		)
+		if err != nil {
+			return err
+		}
+		if count > 0 {
 			return fmt.Errorf("user %d already exists", userID)
 		}
 		return nil
