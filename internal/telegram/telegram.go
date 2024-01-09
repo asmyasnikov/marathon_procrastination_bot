@@ -46,10 +46,11 @@ type Storage interface {
 	RemoveUser(ctx context.Context, userID int64) error
 	NewUserActivity(ctx context.Context, userID int64, activity string) error
 	DeleteUserActivity(ctx context.Context, userID int64, activity string) error
-	AppendUserActivity(ctx context.Context, userID int64, activity string) error
+	PostUserActivity(ctx context.Context, userID int64, activity string) error
 	UserActivities(ctx context.Context, userID int64) (activities []string, _ error)
 	UserRegistrationChatID(ctx context.Context, userID int64) (chatID int64, _ error)
 	UserStats(ctx context.Context, userID int64, activity string) (total uint64, current uint64, err error)
+	UpdateUserActivityLastNotificated(ctx context.Context, userID int64, activities ...string) error
 	RotateUserStats(ctx context.Context, userID int64) error
 	SetUserRotateHour(ctx context.Context, userID int64, hour int32) error
 	UsersForRotate(ctx context.Context, hour int32) (ids []int64, err error)
@@ -112,6 +113,9 @@ func (a *Agent) PingUser(ctx context.Context, userID int64) error {
 			"Используй команду /post - чтобы записать участие в марафоне",
 	})
 	if err != nil {
+		return err
+	}
+	if err := a.storage.UpdateUserActivityLastNotificated(ctx, userID, activities...); err != nil {
 		return err
 	}
 	return err
@@ -362,7 +366,7 @@ func (a *Agent) Handle(ctx context.Context, b *bot.Bot, update *models.Update) (
 		}
 		if strings.HasPrefix(update.CallbackQuery.Data, "/post ") {
 			activity := strings.TrimLeft(update.CallbackQuery.Data, "/post ")
-			if err := a.storage.AppendUserActivity(ctx, update.CallbackQuery.Sender.ID, activity); err != nil {
+			if err := a.storage.PostUserActivity(ctx, update.CallbackQuery.Sender.ID, activity); err != nil {
 				return b.SendMessage(ctx, &bot.SendMessageParams{
 					ChatID: update.CallbackQuery.Message.Chat.ID,
 					Text: fmt.Sprintf("Не удалось сохранить участие в марафоне %q пользователя @%s: %v",

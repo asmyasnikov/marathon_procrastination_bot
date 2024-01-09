@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
+	"github.com/ydb-platform/ydb-go-sdk/v3/table/types"
 	"os"
 	"time"
 
@@ -103,7 +104,7 @@ func (s *storage) UsersForNotification(ctx context.Context) (ids []int64, err er
 			SELECT DISTINCT user_id 
 			FROM activities 
 			WHERE current=0 
-				AND COALESCE(last_pontificated, CAST(0 AS Timestamp))<CAST($1 AS Timestamp);
+				AND COALESCE(last_notificated, CAST(0 AS Timestamp))<CAST($1 AS Timestamp);
 			`, time.Now().UTC().Add(-time.Duration(env.FreezeHours())*time.Hour),
 		)
 		if err != nil {
@@ -378,7 +379,35 @@ func (s *storage) UserActivities(ctx context.Context, userID int64) (activities 
 	return activities, err
 }
 
-func (s *storage) AppendUserActivity(ctx context.Context, userID int64, activity string) error {
+func (s *storage) UpdateUserActivityLastNotificated(ctx context.Context, userID int64, activities ...string) error {
+	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			UPSERT INTO activities (
+			    user_id, activity, last_notificated
+			) SELECT user_id, activity, last_notificated FROM AS_TABLE($1);`,
+			func() types.Value {
+				var (
+					lastNotificated = time.Now().UTC()
+					rows            = make([]types.Value, len(activities))
+				)
+				for i, activity := range activities {
+					rows[i] = types.StructValue(
+						types.StructFieldValue("user_id", types.Int64Value(userID)),
+						types.StructFieldValue("activity", types.TextValue(activity)),
+						types.StructFieldValue("last_notificated", types.TimestampValueFromTime(lastNotificated)),
+					)
+				}
+				return types.ListValue(rows...)
+			}(),
+		)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func (s *storage) PostUserActivity(ctx context.Context, userID int64, activity string) error {
 	return retry.DoTx(ctx, s.db, func(ctx context.Context, tx *sql.Tx) error {
 		row := tx.QueryRowContext(ctx, `
 			SELECT COUNT(*)
@@ -410,6 +439,19 @@ func (s *storage) AppendUserActivity(ctx context.Context, userID int64, activity
 			UPDATE users SET last_post_ts=$1, last_activity_ts=$1
 			WHERE user_id=$2;
 			`, time.Now().UTC(), userID,
+		)
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `
+			UPSERT INTO posts (
+			    user_id, activity, ts
+			) VALUES (
+			    $1, $2, $3
+			);`,
+			userID,
+			activity,
+			time.Now().UTC(),
 		)
 		if err != nil {
 			return err

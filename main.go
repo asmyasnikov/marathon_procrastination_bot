@@ -22,6 +22,11 @@ func main() {
 		panic(err)
 	}
 
+	agent, err := telegram.New(s)
+	if err != nil {
+		panic(err)
+	}
+
 	go func() {
 		for {
 			select {
@@ -39,14 +44,21 @@ func main() {
 						}
 					}
 				}()
+			case <-time.After(time.Second):
+				func() {
+					ids, err := s.UsersForNotification(ctx)
+					if err != nil {
+						return
+					}
+					for _, id := range ids {
+						if err := agent.PingUser(ctx, id); err != nil {
+							return
+						}
+					}
+				}()
 			}
 		}
 	}()
-
-	agent, err := telegram.New(s)
-	if err != nil {
-		panic(err)
-	}
 
 	agent.Bot().Start(ctx)
 }
